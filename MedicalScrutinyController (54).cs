@@ -7984,7 +7984,18 @@ namespace Enrollment.Controllers
                     return Json(new { success = false, error = "Invalid claimId" }, JsonRequestBehavior.AllowGet);
 
                 string connStr = System.Configuration.ConfigurationManager
-                                       .ConnectionStrings["DBConnection"].ConnectionString;
+                                       .ConnectionStrings["DBConnection"]?.ConnectionString
+                                    ?? System.Configuration.ConfigurationManager
+                                       .ConnectionStrings["McarePlusEntities"]?.ConnectionString
+                                    ?? "";
+                // Strip EF metadata wrapper if present
+                if (connStr.StartsWith("metadata=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(
+                        connStr, @"provider connection string=""([^""]+)""",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (m.Success) connStr = m.Groups[1].Value.Replace("&quot;", """);
+                }
 
                 using (var conn = new System.Data.SqlClient.SqlConnection(connStr))
                 {

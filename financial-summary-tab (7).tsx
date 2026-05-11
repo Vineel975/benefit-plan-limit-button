@@ -433,6 +433,32 @@ export function FinancialSummaryTab({
   const [ailmentSummary,    setAilmentSummary]    = useState<string | null>(null);
   const [copayRawInfo,      setCopayRawInfo]      = useState<string | null>(null);
   const [spLimitLoading,    setSpLimitLoading]    = useState(false);
+
+  // Listen for coding procedure limit result from Spectra (via postMessage → CustomEvent)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        success: boolean; error?: string;
+        eligibleAmount?: number; ruleName?: string;
+        limits?: Record<string, number | null>;
+        utilized?: Record<string, number>;
+      };
+      setSpLimitLoading(false);
+      if (d.success && d.eligibleAmount !== undefined) {
+        setSpLimitResult({
+          eligibleAmount: d.eligibleAmount,
+          ruleName: d.ruleName ?? "",
+          limits: d.limits ?? {},
+          utilized: d.utilized ?? {},
+        });
+        onBenefitPlanLimitExtracted?.(d.eligibleAmount, `Calculated from benefit plan rules: ${d.ruleName ?? ""}`);
+      } else {
+        setSpLimitError(d.error ?? "Failed to calculate");
+      }
+    };
+    window.addEventListener("claimai:codingLimitResult", handler);
+    return () => window.removeEventListener("claimai:codingLimitResult", handler);
+  }, [onBenefitPlanLimitExtracted]);
   const [spLimitResult,     setSpLimitResult]     = useState<{
     eligibleAmount: number;
     ruleName: string;
@@ -1092,41 +1118,15 @@ export function FinancialSummaryTab({
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Benefit Plan Limit</span>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     if (!claimId) return;
                     setSpLimitLoading(true);
                     setSpLimitError(null);
-                    try {
-                      // Call Spectra endpoint to get SP-calculated limit
-                      const spectraBase = window.location.ancestorOrigins?.[0]
-                        ?? (window.parent !== window ? document.referrer.replace(/\/MedicalScrutiny.*/, "") : "");
-                      const url = spectraBase
-                        ? `${spectraBase}/MedicalScrutiny/GetCodingProcedureEligibleLimit?claimId=${encodeURIComponent(claimId)}`
-                        : null;
-                      if (!url) { setSpLimitError("Cannot reach Spectra"); setSpLimitLoading(false); return; }
-                      const res = await fetch(url, { credentials: "include" });
-                      const data = await res.json() as {
-                        success: boolean; error?: string;
-                        eligibleAmount?: number; ruleName?: string;
-                        limits?: Record<string, number | null>;
-                        utilized?: Record<string, number>;
-                      };
-                      if (data.success && data.eligibleAmount !== undefined) {
-                        setSpLimitResult({
-                          eligibleAmount: data.eligibleAmount,
-                          ruleName: data.ruleName ?? "",
-                          limits: data.limits ?? {},
-                          utilized: data.utilized ?? {},
-                        });
-                        onBenefitPlanLimitExtracted?.(data.eligibleAmount, `Calculated from benefit plan rules: ${data.ruleName}`);
-                      } else {
-                        setSpLimitError(data.error ?? "Failed to calculate");
-                      }
-                    } catch (e) {
-                      setSpLimitError(String(e));
-                    } finally {
-                      setSpLimitLoading(false);
-                    }
+                    // Ask Spectra parent to call the endpoint (avoids CORS)
+                    window.parent.postMessage(
+                      { source: "claimai", type: "getCodingProcedureLimit", claimId },
+                      "*"
+                    );
                   }}
                   disabled={spLimitLoading || !claimId}
                   className="text-xs px-2 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"

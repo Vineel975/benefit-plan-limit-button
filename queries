@@ -1,3 +1,22 @@
+-- Check conditions configured for BPSIID = 436675
+SELECT rc.*, c.Name AS ConditionName, c.ParentID
+FROM Ruleconfiguration rc WITH(NOLOCK)
+LEFT JOIN Mst_BPConditions c WITH(NOLOCK) ON c.ID = rc.BPConditionID
+WHERE rc.BPSIID = 436675
+ORDER BY c.Name
+
+-- Also check BPSIConditions for this BPSIID
+SELECT bsc.*, c.Name AS ConditionName
+FROM BPSIConditions bsc WITH(NOLOCK)
+LEFT JOIN Mst_BPConditions c WITH(NOLOCK) ON c.ID = bsc.ConditionID
+WHERE bsc.BPSIID = 436675
+ORDER BY c.Name
+
+-- Check what Mst_BPConditions looks like
+SELECT TOP 10 * FROM Mst_BPConditions WITH(NOLOCK)
+ORDER BY ID
+
+
 -- Find all BP related tables in the DB
 SELECT TABLE_NAME 
 FROM INFORMATION_SCHEMA.TABLES 

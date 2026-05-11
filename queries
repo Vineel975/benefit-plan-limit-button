@@ -1,3 +1,21 @@
+-- Check Ruleconfiguration columns
+SELECT COLUMN_NAME 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Ruleconfiguration'
+ORDER BY ORDINAL_POSITION
+
+-- Check BPSIConditions columns  
+SELECT COLUMN_NAME 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'BPSIConditions'
+ORDER BY ORDINAL_POSITION
+
+-- Check Mst_BPConditions columns
+SELECT COLUMN_NAME 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Mst_BPConditions'
+ORDER BY ORDINAL_POSITION
+
 -- Check conditions configured for BPSIID = 436675
 SELECT rc.*, c.Name AS ConditionName, c.ParentID
 FROM Ruleconfiguration rc WITH(NOLOCK)

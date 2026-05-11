@@ -7975,6 +7975,13 @@ namespace Enrollment.Controllers
         [HttpGet]
         [AllowAnonymous]
         [OverrideAuthorization]
+        /// <summary>
+        /// GET /MedicalScrutiny/GetCodingProcedureEligibleLimit
+        /// Calls USP_Codingprocedurelimits to get the exact DB-calculated benefit plan limit.
+        /// </summary>
+        [HttpGet]
+        [AllowAnonymous]
+        [OverrideAuthorization]
         public ActionResult GetCodingProcedureEligibleLimit(
             string claimId, string slNo = "1",
             string providerID = "0", string policyID = "0", string memberPolicyID = "0",
@@ -8001,26 +8008,25 @@ namespace Enrollment.Controllers
                 {
                     conn.Open();
 
-                    // Use params passed directly from Spectra page hidden fields
-                    long provId   = long.TryParse(providerID,   out long _p)  ? _p  : 0;
-                    long polId    = long.TryParse(policyID,     out long _po) ? _po : 0;
-                    long memPolId = long.TryParse(memberPolicyID, out long _mp) ? _mp : 0;
-                    int  issId    = int.TryParse(issueID,       out int  _i)  ? _i  : 0;
-                    long corpId   = long.TryParse(corpID,       out long _c)  ? _c  : 0;
-                    long payId    = long.TryParse(payerID,      out long _pa) ? _pa : 0;
-                    int  brokId   = int.TryParse(brokerID,      out int  _b)  ? _b  : 0;
-                    int  siTypId  = int.TryParse(siTypeID,      out int  _s)  ? _s  : 0;
-                    int  slNoInt  = int.TryParse(slNo,          out int  _sl) ? _sl : 1;
+                    // Parse parameters passed from Spectra hidden fields
+                    long provId   = long.TryParse(providerID,    out long _p)   ? _p   : 0;
+                    long polId    = long.TryParse(policyID,      out long _po)  ? _po  : 0;
+                    long memPolId = long.TryParse(memberPolicyID,out long _mp)  ? _mp  : 0;
+                    int  issId    = int.TryParse(issueID,        out int  _i)   ? _i   : 0;
+                    long corpId   = long.TryParse(corpID,        out long _c)   ? _c   : 0;
+                    long payId    = long.TryParse(payerID,       out long _pa)  ? _pa  : 0;
+                    int  brokId   = int.TryParse(brokerID,       out int  _b)   ? _b   : 0;
+                    int  siTypId  = int.TryParse(siTypeID,       out int  _s)   ? _s   : 0;
+                    int  slNoInt  = int.TryParse(slNo,           out int  _sl)  ? _sl  : 1;
                     byte isPED = 0, isGIPSA = 0, isDayCare = 1, isCI = 0;
                     int  procedureID = 0, level1 = 0;
 
-                    // Get procedure ID from coding details (most recent)
                     // Get procedure ID from ClaimsCoding (most recent entry)
-                    using (var cmd = new System.Data.SqlClient.SqlCommand(@"
-                        SELECT TOP 1 TPAProcedureID, TPALevel1
-                        FROM ClaimsCoding WITH(NOLOCK)
-                        WHERE ClaimID = @ClaimID AND ISNULL(Deleted,0)=0
-                        ORDER BY ID DESC", conn))
+                    using (var cmd = new System.Data.SqlClient.SqlCommand(
+                        @"SELECT TOP 1 TPAProcedureID, TPALevel1
+                          FROM ClaimsCoding WITH(NOLOCK)
+                          WHERE ClaimID = @ClaimID AND ISNULL(Deleted,0)=0
+                          ORDER BY ID DESC", conn))
                     {
                         cmd.Parameters.AddWithValue("@ClaimID", claimIdLong);
                         using (var rdr = cmd.ExecuteReader())
@@ -8033,7 +8039,7 @@ namespace Enrollment.Controllers
                         }
                     }
 
-                    if (procedureID == 0 || memberPolicyID == 0)
+                    if (procedureID == 0 || memPolId == 0)
                         return Json(new { success = false, error = "Coding details not found. Please complete coding first." }, JsonRequestBehavior.AllowGet);
 
                     // Call USP_Codingprocedurelimits
@@ -8042,121 +8048,140 @@ namespace Enrollment.Controllers
                     {
                         cmd.CommandType    = System.Data.CommandType.StoredProcedure;
                         cmd.CommandTimeout = 120;
-                        cmd.Parameters.AddWithValue("@ProviderID",    provId);
-                        cmd.Parameters.AddWithValue("@ProcedureID",   procedureID);
-                        cmd.Parameters.AddWithValue("@TPAProcID",     procedureID.ToString());
+                        cmd.Parameters.AddWithValue("@ProviderID",     provId);
+                        cmd.Parameters.AddWithValue("@ProcedureID",    procedureID);
+                        cmd.Parameters.AddWithValue("@TPAProcID",      procedureID.ToString());
                         cmd.Parameters.AddWithValue("@TPAProcedureID", level1.ToString());
-                        cmd.Parameters.AddWithValue("@IssueID",       issId);
-                        cmd.Parameters.AddWithValue("@CorpID",        corpId);
-                        cmd.Parameters.AddWithValue("@PayerID",       payId);
-                        cmd.Parameters.AddWithValue("@PolicyID",      polId);
-                        cmd.Parameters.AddWithValue("@ClaimID",       claimIdLong);
+                        cmd.Parameters.AddWithValue("@IssueID",        issId);
+                        cmd.Parameters.AddWithValue("@CorpID",         corpId);
+                        cmd.Parameters.AddWithValue("@PayerID",        payId);
+                        cmd.Parameters.AddWithValue("@PolicyID",       polId);
+                        cmd.Parameters.AddWithValue("@ClaimID",        claimIdLong);
                         cmd.Parameters.AddWithValue("@MemberPolicyID", memPolId);
-                        cmd.Parameters.AddWithValue("@SITypeID",      siTypId);
-                        cmd.Parameters.AddWithValue("@isPED",         isPED);
-                        cmd.Parameters.AddWithValue("@isGIPSA",       isGIPSA);
-                        cmd.Parameters.AddWithValue("@isDaycare",     isDayCare);
-                        cmd.Parameters.AddWithValue("@isCI",          isCI);
+                        cmd.Parameters.AddWithValue("@SITypeID",       siTypId);
+                        cmd.Parameters.AddWithValue("@isPED",          isPED);
+                        cmd.Parameters.AddWithValue("@isGIPSA",        isGIPSA);
+                        cmd.Parameters.AddWithValue("@isDaycare",      isDayCare);
+                        cmd.Parameters.AddWithValue("@isCI",           isCI);
                         if (brokId != 0)
-                            cmd.Parameters.AddWithValue("@BrokerID",  brokId);
-                        cmd.Parameters.AddWithValue("@Slno",          slNoInt);
+                            cmd.Parameters.AddWithValue("@BrokerID",   brokId);
+                        cmd.Parameters.AddWithValue("@Slno",           slNoInt);
 
                         using (var adapter = new System.Data.SqlClient.SqlDataAdapter(cmd))
                             adapter.Fill(ds);
                     }
 
-                    // Calculate eligible amount from Table2 (limits) and Table3 (utilized)
-                    // ── Full SP input/output log ─────────────────────────────────────
-                    var spLog = new System.Text.StringBuilder();
-                    spLog.AppendLine("=== USP_Codingprocedurelimits INPUT ===");
-                    spLog.AppendLine($"  @ClaimID        = {claimIdLong}");
-                    spLog.AppendLine($"  @Slno           = {slNoInt}");
-                    spLog.AppendLine($"  @ProviderID     = {provId}");
-                    spLog.AppendLine($"  @PolicyID       = {polId}");
-                    spLog.AppendLine($"  @MemberPolicyID = {memPolId}");
-                    spLog.AppendLine($"  @IssueID        = {issId}");
-                    spLog.AppendLine($"  @CorpID         = {corpId}");
-                    spLog.AppendLine($"  @PayerID        = {payId}");
-                    spLog.AppendLine($"  @BrokerID       = {brokId}");
-                    spLog.AppendLine($"  @SITypeID       = {siTypId}");
-                    spLog.AppendLine($"  @ProcedureID    = {procedureID}");
-                    spLog.AppendLine($"  @TPAProcID      = {procedureID}");
-                    spLog.AppendLine($"  @TPAProcedureID = {level1}  (Level1)");
-                    spLog.AppendLine($"  @isPED          = {isPED}");
-                    spLog.AppendLine($"  @isGIPSA        = {isGIPSA}");
-                    spLog.AppendLine($"  @isDaycare      = {isDayCare}");
-                    spLog.AppendLine($"  @isCI           = {isCI}");
-                    spLog.AppendLine("=== USP_Codingprocedurelimits OUTPUT ===");
-                    spLog.AppendLine($"  Tables returned = {ds.Tables.Count}");
-                    for (int t = 0; t < ds.Tables.Count; t++)
-                    {
-                        spLog.AppendLine($"  Table[{t}] rows = {ds.Tables[t].Rows.Count}");
-                        if (ds.Tables[t].Rows.Count > 0)
-                        {
-                            var colNames = string.Join(", ", ds.Tables[t].Columns.Cast<System.Data.DataColumn>().Select(c => c.ColumnName));
-                            spLog.AppendLine($"    Columns: {colNames}");
-                            foreach (System.Data.DataRow dr in ds.Tables[t].Rows)
-                            {
-                                var rowVals = string.Join(", ", ds.Tables[t].Columns.Cast<System.Data.DataColumn>()
-                                    .Select(c => $"{c.ColumnName}={dr[c]}"));
-                                spLog.AppendLine($"    Row: {rowVals}");
-                            }
-                        }
-                    }
-                    System.Diagnostics.Debug.WriteLine(spLog.ToString());
-
-                    // Also write to log file
+                    // Log to file
                     try {
                         string logDir  = System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data/Logs");
                         if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
                         string logFile = System.IO.Path.Combine(logDir, "CodingLimit_" + DateTime.Now.ToString("yyyyMMdd") + ".log");
-                        System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("HH:mm:ss.fff") + " " + spLog.ToString() + Environment.NewLine);
+                        var sb = new System.Text.StringBuilder();
+                        sb.AppendLine($"=== USP_Codingprocedurelimits ===");
+                        sb.AppendLine($"  ClaimID={claimIdLong} ProcID={procedureID} Level1={level1} MemPolID={memPolId} IssID={issId}");
+                        sb.AppendLine($"  Tables={ds.Tables.Count}");
+                        for (int t = 0; t < ds.Tables.Count; t++)
+                            sb.AppendLine($"  Table[{t}] rows={ds.Tables[t].Rows.Count}");
+                        System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("HH:mm:ss") + " " + sb.ToString());
                     } catch { }
 
-                    if (ds.Tables.Count < 2 || ds.Tables[1].Rows.Count == 0)
-                        return Json(new {
-                            success = false,
-                            error = $"No benefit plan limits found for ProcedureID={procedureID}, Level1={level1}, MemberPolicyID={memPolId}. Tables={ds.Tables.Count}, Table0rows={(ds.Tables.Count > 0 ? ds.Tables[0].Rows.Count : -1)}, Table1rows={(ds.Tables.Count > 1 ? ds.Tables[1].Rows.Count : -1)}",
-                            debug = new {
-                                claimId      = claimIdLong,
-                                slNo         = slNoInt,
-                                providerID   = provId,
-                                policyID     = polId,
-                                memberPolicyID = memPolId,
-                                issueID      = issId,
-                                corpID       = corpId,
-                                payerID      = payId,
-                                brokerID     = brokId,
-                                siTypeID     = siTypId,
-                                procedureID  = procedureID,
-                                level1       = level1,
-                                isDayCare    = isDayCare,
-                                tablesReturned = ds.Tables.Count,
-                                table0Rows   = ds.Tables.Count > 0 ? ds.Tables[0].Rows.Count : -1,
-                                table1Rows   = ds.Tables.Count > 1 ? ds.Tables[1].Rows.Count : -1
-                            }
-                        }, JsonRequestBehavior.AllowGet);
+                    // Table2 = configured limits, Table3 = utilized amounts
+                    bool spNoLimit = ds.Tables.Count < 2 || ds.Tables[1].Rows.Count == 0;
+                    if (!spNoLimit)
+                    {
+                        var limitsRow = ds.Tables[1].Rows[0];
+                        spNoLimit = limitsRow["ClaimLimit"]     == DBNull.Value
+                                 && limitsRow["IndividualLimit"] == DBNull.Value
+                                 && limitsRow["FamilyLimit"]     == DBNull.Value
+                                 && limitsRow["PolicyLimit"]     == DBNull.Value
+                                 && limitsRow["CorporateLimit"]  == DBNull.Value;
+                    }
 
-                    var limitsRow    = ds.Tables[1].Rows[0];
-                    double claimLim  = limitsRow["ClaimLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["ClaimLimit"])      : double.MaxValue;
-                    double indLim    = limitsRow["IndividualLimit"]  != DBNull.Value ? Convert.ToDouble(limitsRow["IndividualLimit"]) : double.MaxValue;
-                    double famLim    = limitsRow["FamilyLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["FamilyLimit"])     : double.MaxValue;
-                    double polLim    = limitsRow["PolicyLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["PolicyLimit"])     : double.MaxValue;
-                    double corpLim   = limitsRow["CorporateLimit"]   != DBNull.Value ? Convert.ToDouble(limitsRow["CorporateLimit"])  : double.MaxValue;
-                    string ruleName  = limitsRow["RuleName"]         != DBNull.Value ? limitsRow["RuleName"].ToString()              : "";
+                    if (spNoLimit)
+                    {
+                        // SP returned no limits — fall back to BPSIConditions Ailment Cappings
+                        double? ailmentLimit = null;
+                        string  ailmentRule  = "";
+                        string  ailmentRemark = "";
+
+                        // Get BPSIID from MemberSI
+                        long bpsiId = 0;
+                        using (var bpCmd = new System.Data.SqlClient.SqlCommand(
+                            @"SELECT TOP 1 BPSIID FROM MemberSI WITH(NOLOCK)
+                              WHERE MemberPolicyID = @MemberPolicyID
+                              AND ISNULL(Deleted,0)=0
+                              ORDER BY ID DESC", conn))
+                        {
+                            bpCmd.Parameters.AddWithValue("@MemberPolicyID", memPolId);
+                            var val = bpCmd.ExecuteScalar();
+                            if (val != null && val != DBNull.Value)
+                                bpsiId = Convert.ToInt64(val);
+                        }
+
+                        if (bpsiId > 0)
+                        {
+                            using (var bpCmd = new System.Data.SqlClient.SqlCommand(
+                                @"SELECT TOP 1 bsc.ClaimLimit, c.Name AS ConditionName, bsc.Remarks
+                                  FROM BPSIConditions bsc WITH(NOLOCK)
+                                  LEFT JOIN Mst_BPConditions c   WITH(NOLOCK) ON c.ID   = bsc.BPConditionID
+                                  LEFT JOIN Mst_BPConditions par WITH(NOLOCK) ON par.ID = c.ParentID
+                                  WHERE bsc.BPSIID = @BPSIID
+                                  AND ISNULL(bsc.Deleted,0) = 0
+                                  AND par.Name = 'Ailment Conditions'
+                                  AND bsc.ClaimLimit IS NOT NULL
+                                  AND ISNULL(bsc.isCovered,0) = 1
+                                  ORDER BY bsc.ClaimLimit ASC", conn))
+                            {
+                                bpCmd.Parameters.AddWithValue("@BPSIID", bpsiId);
+                                using (var rdr = bpCmd.ExecuteReader())
+                                {
+                                    if (rdr.Read())
+                                    {
+                                        ailmentLimit  = rdr["ClaimLimit"]     != DBNull.Value ? Convert.ToDouble(rdr["ClaimLimit"]) : (double?)null;
+                                        ailmentRule   = rdr["ConditionName"]  != DBNull.Value ? rdr["ConditionName"].ToString()     : "";
+                                        ailmentRemark = rdr["Remarks"]        != DBNull.Value ? rdr["Remarks"].ToString()           : "";
+                                    }
+                                }
+                            }
+                        }
+
+                        if (ailmentLimit.HasValue)
+                            return Json(new {
+                                success        = true,
+                                noLimit        = false,
+                                eligibleAmount = ailmentLimit.Value,
+                                ruleName       = ailmentRule,
+                                remarks        = ailmentRemark,
+                                source         = "BPSIConditions (Ailment Cappings)",
+                                warning        = "Procedure not linked in benefit plan. Amount shown is from Ailment Cappings — verify before approving."
+                            }, JsonRequestBehavior.AllowGet);
+
+                        return Json(new {
+                            success        = true,
+                            noLimit        = true,
+                            ruleName       = "No ailment sub-limit configured — full sum insured applies",
+                            eligibleAmount = (double?)null
+                        }, JsonRequestBehavior.AllowGet);
+                    }
+
+                    string ruleName = limitsRow["RuleName"] != DBNull.Value ? limitsRow["RuleName"].ToString() : "";
+                    double claimLim = limitsRow["ClaimLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["ClaimLimit"])      : double.MaxValue;
+                    double indLim   = limitsRow["IndividualLimit"]  != DBNull.Value ? Convert.ToDouble(limitsRow["IndividualLimit"]) : double.MaxValue;
+                    double famLim   = limitsRow["FamilyLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["FamilyLimit"])     : double.MaxValue;
+                    double polLim   = limitsRow["PolicyLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["PolicyLimit"])     : double.MaxValue;
+                    double corpLim  = limitsRow["CorporateLimit"]   != DBNull.Value ? Convert.ToDouble(limitsRow["CorporateLimit"])  : double.MaxValue;
 
                     double utilClaim = 0, utilInd = 0, utilFam = 0, utilPol = 0, utilCorp = 0;
                     if (ds.Tables.Count >= 3 && ds.Tables[2].Rows.Count > 0)
                     {
-                        var utilRow  = ds.Tables[2].Rows[0];
-                        utilClaim    = utilRow["ClaimLimit"]     != DBNull.Value ? Convert.ToDouble(utilRow["ClaimLimit"])     : 0;
-                        utilInd      = utilRow["IndividualLimit"] != DBNull.Value ? Convert.ToDouble(utilRow["IndividualLimit"]) : 0;
-                        utilFam      = utilRow["FamilyLimit"]    != DBNull.Value ? Convert.ToDouble(utilRow["FamilyLimit"])    : 0;
-                        utilPol      = utilRow["PolicyLimit"]    != DBNull.Value ? Convert.ToDouble(utilRow["PolicyLimit"])    : 0;
-                        utilCorp     = utilRow["CorporateLimit"] != DBNull.Value ? Convert.ToDouble(utilRow["CorporateLimit"]) : 0;
+                        var u    = ds.Tables[2].Rows[0];
+                        utilClaim = u["ClaimLimit"]      != DBNull.Value ? Convert.ToDouble(u["ClaimLimit"])      : 0;
+                        utilInd   = u["IndividualLimit"]  != DBNull.Value ? Convert.ToDouble(u["IndividualLimit"]) : 0;
+                        utilFam   = u["FamilyLimit"]      != DBNull.Value ? Convert.ToDouble(u["FamilyLimit"])     : 0;
+                        utilPol   = u["PolicyLimit"]      != DBNull.Value ? Convert.ToDouble(u["PolicyLimit"])     : 0;
+                        utilCorp  = u["CorporateLimit"]   != DBNull.Value ? Convert.ToDouble(u["CorporateLimit"])  : 0;
                     }
 
-                    // Eligible = min of (limit - utilized) for each dimension
                     var candidates = new System.Collections.Generic.List<double>();
                     if (claimLim < double.MaxValue) candidates.Add(Math.Max(0, claimLim - utilClaim));
                     if (indLim   < double.MaxValue) candidates.Add(Math.Max(0, indLim   - utilInd));
@@ -8168,21 +8193,19 @@ namespace Enrollment.Controllers
 
                     return Json(new {
                         success        = true,
+                        noLimit        = false,
                         eligibleAmount = eligibleAmount,
                         ruleName       = ruleName,
                         limits = new {
-                            claimLimit      = claimLim < double.MaxValue ? (object)claimLim    : null,
-                            individualLimit = indLim   < double.MaxValue ? (object)indLim      : null,
-                            familyLimit     = famLim   < double.MaxValue ? (object)famLim      : null,
-                            policyLimit     = polLim   < double.MaxValue ? (object)polLim      : null,
-                            corporateLimit  = corpLim  < double.MaxValue ? (object)corpLim     : null
+                            claimLimit      = claimLim < double.MaxValue ? (object)claimLim : null,
+                            individualLimit = indLim   < double.MaxValue ? (object)indLim   : null,
+                            familyLimit     = famLim   < double.MaxValue ? (object)famLim   : null,
+                            policyLimit     = polLim   < double.MaxValue ? (object)polLim   : null,
+                            corporateLimit  = corpLim  < double.MaxValue ? (object)corpLim  : null
                         },
                         utilized = new {
-                            claimLimit      = utilClaim,
-                            individualLimit = utilInd,
-                            familyLimit     = utilFam,
-                            policyLimit     = utilPol,
-                            corporateLimit  = utilCorp
+                            claimLimit = utilClaim, individualLimit = utilInd,
+                            familyLimit = utilFam,  policyLimit = utilPol, corporateLimit = utilCorp
                         }
                     }, JsonRequestBehavior.AllowGet);
                 }
@@ -8192,7 +8215,8 @@ namespace Enrollment.Controllers
                 return Json(new { success = false, error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
-        /// <summary>
+
+                /// <summary>
         /// Writes a tariff selection log entry to a dedicated log file.
         /// </summary>
         private static void TariffLog(string message)

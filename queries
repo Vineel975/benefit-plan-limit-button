@@ -1,3 +1,23 @@
+-- Check what conditions/rules exist for BPSIID 436675
+SELECT bsc.ID, bsc.BPSIID, bsc.BPConditionID, 
+       c.Name AS ConditionName, c.ParentID,
+       par.Name AS ParentName,
+       bsc.ClaimLimit, bsc.IndividualLimit, bsc.FamilyLimit,
+       bsc.PolicyLimit, bsc.CorporateLimit,
+       bsc.TPAProcedureID, bsc.Remarks, bsc.isCovered
+FROM BPSIConditions bsc WITH(NOLOCK)
+LEFT JOIN Mst_BPConditions c   WITH(NOLOCK) ON c.ID   = bsc.BPConditionID
+LEFT JOIN Mst_BPConditions par WITH(NOLOCK) ON par.ID = c.ParentID
+WHERE bsc.BPSIID = 436675
+AND ISNULL(bsc.Deleted, 0) = 0
+ORDER BY par.Name, c.Name
+
+-- Also check specifically for procedure 503
+SELECT * FROM BPSIConditions WITH(NOLOCK)
+WHERE BPSIID = 436675
+AND TPAProcedureID = 503
+AND ISNULL(Deleted, 0) = 0
+
 -- Check Ruleconfiguration columns
 SELECT COLUMN_NAME 
 FROM INFORMATION_SCHEMA.COLUMNS 

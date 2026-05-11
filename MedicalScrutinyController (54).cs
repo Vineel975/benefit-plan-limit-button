@@ -8066,8 +8066,76 @@ namespace Enrollment.Controllers
                     }
 
                     // Calculate eligible amount from Table2 (limits) and Table3 (utilized)
+                    // ── Full SP input/output log ─────────────────────────────────────
+                    var spLog = new System.Text.StringBuilder();
+                    spLog.AppendLine("=== USP_Codingprocedurelimits INPUT ===");
+                    spLog.AppendLine($"  @ClaimID        = {claimIdLong}");
+                    spLog.AppendLine($"  @Slno           = {slNoInt}");
+                    spLog.AppendLine($"  @ProviderID     = {provId}");
+                    spLog.AppendLine($"  @PolicyID       = {polId}");
+                    spLog.AppendLine($"  @MemberPolicyID = {memPolId}");
+                    spLog.AppendLine($"  @IssueID        = {issId}");
+                    spLog.AppendLine($"  @CorpID         = {corpId}");
+                    spLog.AppendLine($"  @PayerID        = {payId}");
+                    spLog.AppendLine($"  @BrokerID       = {brokId}");
+                    spLog.AppendLine($"  @SITypeID       = {siTypId}");
+                    spLog.AppendLine($"  @ProcedureID    = {procedureID}");
+                    spLog.AppendLine($"  @TPAProcID      = {procedureID}");
+                    spLog.AppendLine($"  @TPAProcedureID = {level1}  (Level1)");
+                    spLog.AppendLine($"  @isPED          = {isPED}");
+                    spLog.AppendLine($"  @isGIPSA        = {isGIPSA}");
+                    spLog.AppendLine($"  @isDaycare      = {isDayCare}");
+                    spLog.AppendLine($"  @isCI           = {isCI}");
+                    spLog.AppendLine("=== USP_Codingprocedurelimits OUTPUT ===");
+                    spLog.AppendLine($"  Tables returned = {ds.Tables.Count}");
+                    for (int t = 0; t < ds.Tables.Count; t++)
+                    {
+                        spLog.AppendLine($"  Table[{t}] rows = {ds.Tables[t].Rows.Count}");
+                        if (ds.Tables[t].Rows.Count > 0)
+                        {
+                            var colNames = string.Join(", ", ds.Tables[t].Columns.Cast<System.Data.DataColumn>().Select(c => c.ColumnName));
+                            spLog.AppendLine($"    Columns: {colNames}");
+                            foreach (System.Data.DataRow dr in ds.Tables[t].Rows)
+                            {
+                                var rowVals = string.Join(", ", ds.Tables[t].Columns.Cast<System.Data.DataColumn>()
+                                    .Select(c => $"{c.ColumnName}={dr[c]}"));
+                                spLog.AppendLine($"    Row: {rowVals}");
+                            }
+                        }
+                    }
+                    System.Diagnostics.Debug.WriteLine(spLog.ToString());
+
+                    // Also write to log file
+                    try {
+                        string logDir  = System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data/Logs");
+                        if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
+                        string logFile = System.IO.Path.Combine(logDir, "CodingLimit_" + DateTime.Now.ToString("yyyyMMdd") + ".log");
+                        System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("HH:mm:ss.fff") + " " + spLog.ToString() + Environment.NewLine);
+                    } catch { }
+
                     if (ds.Tables.Count < 2 || ds.Tables[1].Rows.Count == 0)
-                        return Json(new { success = false, error = "No benefit plan limits found for this procedure." }, JsonRequestBehavior.AllowGet);
+                        return Json(new {
+                            success = false,
+                            error = $"No benefit plan limits found for ProcedureID={procedureID}, Level1={level1}, MemberPolicyID={memPolId}. Tables={ds.Tables.Count}, Table0rows={(ds.Tables.Count > 0 ? ds.Tables[0].Rows.Count : -1)}, Table1rows={(ds.Tables.Count > 1 ? ds.Tables[1].Rows.Count : -1)}",
+                            debug = new {
+                                claimId      = claimIdLong,
+                                slNo         = slNoInt,
+                                providerID   = provId,
+                                policyID     = polId,
+                                memberPolicyID = memPolId,
+                                issueID      = issId,
+                                corpID       = corpId,
+                                payerID      = payId,
+                                brokerID     = brokId,
+                                siTypeID     = siTypId,
+                                procedureID  = procedureID,
+                                level1       = level1,
+                                isDayCare    = isDayCare,
+                                tablesReturned = ds.Tables.Count,
+                                table0Rows   = ds.Tables.Count > 0 ? ds.Tables[0].Rows.Count : -1,
+                                table1Rows   = ds.Tables.Count > 1 ? ds.Tables[1].Rows.Count : -1
+                            }
+                        }, JsonRequestBehavior.AllowGet);
 
                     var limitsRow    = ds.Tables[1].Rows[0];
                     double claimLim  = limitsRow["ClaimLimit"]      != DBNull.Value ? Convert.ToDouble(limitsRow["ClaimLimit"])      : double.MaxValue;

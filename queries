@@ -1,3 +1,19 @@
+-- Get BPSIID for this member policy
+SELECT TOP 1 ID, BPSIID, MemberPolicyID, SIAmount, SITypeID
+FROM MemberSI WITH(NOLOCK)
+WHERE MemberPolicyID = 94539527
+AND ISNULL(Deleted, 0) = 0
+ORDER BY ID DESC
+
+-- Then check what rules exist for this BPSIID
+-- Replace <BPSIID> with the value from above
+SELECT rc.*, c.Name AS ConditionName
+FROM BPRuleConfig rc WITH(NOLOCK)
+LEFT JOIN BPMasterCondition c WITH(NOLOCK) ON c.ID = rc.BPConditionID
+WHERE rc.BPSIID = <BPSIID>
+ORDER BY c.Name
+
+
 -- 1. Check what conditions are configured for this member policy's benefit plan
 EXEC USP_BPSumInsured_Retrieve
 

@@ -8015,10 +8015,10 @@ namespace Enrollment.Controllers
                     int  procedureID = 0, level1 = 0;
 
                     // Get procedure ID from coding details (most recent)
-                    // Get procedure ID from coding details (most recent)
+                    // Get procedure ID from ClaimsCoding (most recent entry)
                     using (var cmd = new System.Data.SqlClient.SqlCommand(@"
-                        SELECT TOP 1 TPAProcedureID, TPAProcLvl1ID
-                        FROM ClaimCodingDetails WITH(NOLOCK)
+                        SELECT TOP 1 TPAProcedureID, TPALevel1
+                        FROM ClaimsCoding WITH(NOLOCK)
                         WHERE ClaimID = @ClaimID AND ISNULL(Deleted,0)=0
                         ORDER BY ID DESC", conn))
                     {
@@ -8027,8 +8027,8 @@ namespace Enrollment.Controllers
                         {
                             if (rdr.Read())
                             {
-                                procedureID = rdr["TPAProcedureID"]  != DBNull.Value ? Convert.ToInt32(rdr["TPAProcedureID"]) : 0;
-                                level1      = rdr["TPAProcLvl1ID"]   != DBNull.Value ? Convert.ToInt32(rdr["TPAProcLvl1ID"])  : 0;
+                                procedureID = rdr["TPAProcedureID"] != DBNull.Value ? Convert.ToInt32(rdr["TPAProcedureID"]) : 0;
+                                level1      = rdr["TPALevel1"]      != DBNull.Value ? Convert.ToInt32(rdr["TPALevel1"])      : 0;
                             }
                         }
                     }

@@ -1,0 +1,35 @@
+-- Check what procedures are linked to this member's benefit plan
+SELECT 
+    bp.ID           AS BPConditionID,
+    bp.Name         AS ConditionName,
+    bp.ParentID,
+    par.Name        AS ParentName,
+    rc.ClaimLimit,
+    rc.IndividualLimit,
+    rc.FamilyLimit,
+    rc.PolicyLimit,
+    rc.Remarks,
+    rc.TPAProcedureID,
+    rc.TPALevel1
+FROM BPCondition bp WITH(NOLOCK)
+LEFT JOIN BPCondition par WITH(NOLOCK) ON par.ID = bp.ParentID
+LEFT JOIN BPRuleConfig rc WITH(NOLOCK) ON rc.BPConditionID = bp.ID
+WHERE bp.BPSIID IN (
+    SELECT BPSIID FROM MemberPolicy WITH(NOLOCK) WHERE ID = 94539527
+)
+ORDER BY par.Name, bp.Name
+
+
+
+
+
+
+
+-- Check what procedure was coded for this claim
+SELECT TOP 5 
+    ID, ClaimID, SlNo,
+    TPAProcedureID, TPALevel1, TPALevel2, TPALevel3,
+    CreatedDatetime
+FROM ClaimsCoding WITH(NOLOCK)
+WHERE ClaimID = 26041586026
+ORDER BY ID DESC

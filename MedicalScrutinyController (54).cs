@@ -7975,7 +7975,11 @@ namespace Enrollment.Controllers
         [HttpGet]
         [AllowAnonymous]
         [OverrideAuthorization]
-        public ActionResult GetCodingProcedureEligibleLimit(string claimId)
+        public ActionResult GetCodingProcedureEligibleLimit(
+            string claimId, string slNo = "1",
+            string providerID = "0", string policyID = "0", string memberPolicyID = "0",
+            string issueID = "0", string corpID = "0", string payerID = "0",
+            string brokerID = "0", string siTypeID = "0")
         {
             try
             {
@@ -7984,57 +7988,33 @@ namespace Enrollment.Controllers
                     return Json(new { success = false, error = "Invalid claimId" }, JsonRequestBehavior.AllowGet);
 
                 string connStr = System.Configuration.ConfigurationManager
-                                       .ConnectionStrings["DBConnection"]?.ConnectionString
-                                    ?? System.Configuration.ConfigurationManager
-                                       .ConnectionStrings["McarePlusEntities"]?.ConnectionString
-                                    ?? "";
-                // Strip EF metadata wrapper if present
+                                       .ConnectionStrings["McarePlusEntities"]?.ConnectionString ?? "";
                 if (connStr.StartsWith("metadata=", StringComparison.OrdinalIgnoreCase))
                 {
                     var m = System.Text.RegularExpressions.Regex.Match(
                         connStr, @"provider connection string=""([^""]+)""",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    if (m.Success) connStr = m.Groups[1].Value.Replace("&quot;", """);
+                    if (m.Success) connStr = m.Groups[1].Value.Replace("&quot;", "\"");
                 }
 
                 using (var conn = new System.Data.SqlClient.SqlConnection(connStr))
                 {
                     conn.Open();
 
-                    // Get all required parameters from claim data
-                    long providerID = 0, corpID = 0, payerID = 0, policyID = 0, memberPolicyID = 0;
-                    int issueID = 0, siTypeID = 0, slNo = 1, procedureID = 0, level1 = 0, brokerID = 0;
-                    byte isPED = 0, isGIPSA = 0, isDayCare = 1, isCI = 0; // isDayCare=1 for cataract
+                    // Use params passed directly from Spectra page hidden fields
+                    long provId   = long.TryParse(providerID,   out long _p)  ? _p  : 0;
+                    long polId    = long.TryParse(policyID,     out long _po) ? _po : 0;
+                    long memPolId = long.TryParse(memberPolicyID, out long _mp) ? _mp : 0;
+                    int  issId    = int.TryParse(issueID,       out int  _i)  ? _i  : 0;
+                    long corpId   = long.TryParse(corpID,       out long _c)  ? _c  : 0;
+                    long payId    = long.TryParse(payerID,      out long _pa) ? _pa : 0;
+                    int  brokId   = int.TryParse(brokerID,      out int  _b)  ? _b  : 0;
+                    int  siTypId  = int.TryParse(siTypeID,      out int  _s)  ? _s  : 0;
+                    int  slNoInt  = int.TryParse(slNo,          out int  _sl) ? _sl : 1;
+                    byte isPED = 0, isGIPSA = 0, isDayCare = 1, isCI = 0;
+                    int  procedureID = 0, level1 = 0;
 
-                    // Fetch claim parameters
-                    using (var cmd = new System.Data.SqlClient.SqlCommand(@"
-                        SELECT TOP 1
-                            cd.SlNo, cd.ProviderID, cd.PolicyID, cd.MemberPolicyID,
-                            cd.IssueID, cd.CorpID, cd.PayerID, cd.BrokerID,
-                            mp.SITypeID
-                        FROM Claimsdetails cd WITH(NOLOCK)
-                        LEFT JOIN MemberPolicy mp WITH(NOLOCK) ON mp.ID = cd.MemberPolicyID
-                        WHERE cd.ClaimID = @ClaimID AND ISNULL(cd.Deleted,0)=0
-                        ORDER BY cd.SlNo DESC", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@ClaimID", claimIdLong);
-                        using (var rdr = cmd.ExecuteReader())
-                        {
-                            if (rdr.Read())
-                            {
-                                slNo         = rdr["SlNo"]           != DBNull.Value ? Convert.ToInt32(rdr["SlNo"])          : 1;
-                                providerID   = rdr["ProviderID"]     != DBNull.Value ? Convert.ToInt64(rdr["ProviderID"])    : 0;
-                                policyID     = rdr["PolicyID"]       != DBNull.Value ? Convert.ToInt64(rdr["PolicyID"])      : 0;
-                                memberPolicyID = rdr["MemberPolicyID"] != DBNull.Value ? Convert.ToInt64(rdr["MemberPolicyID"]) : 0;
-                                issueID      = rdr["IssueID"]        != DBNull.Value ? Convert.ToInt32(rdr["IssueID"])       : 0;
-                                corpID       = rdr["CorpID"]         != DBNull.Value ? Convert.ToInt64(rdr["CorpID"])        : 0;
-                                payerID      = rdr["PayerID"]        != DBNull.Value ? Convert.ToInt64(rdr["PayerID"])       : 0;
-                                brokerID     = rdr["BrokerID"]       != DBNull.Value ? Convert.ToInt32(rdr["BrokerID"])      : 0;
-                                siTypeID     = rdr["SITypeID"]       != DBNull.Value ? Convert.ToInt32(rdr["SITypeID"])      : 0;
-                            }
-                        }
-                    }
-
+                    // Get procedure ID from coding details (most recent)
                     // Get procedure ID from coding details (most recent)
                     using (var cmd = new System.Data.SqlClient.SqlCommand(@"
                         SELECT TOP 1 TPAProcedureID, TPAProcLvl1ID
@@ -8062,24 +8042,24 @@ namespace Enrollment.Controllers
                     {
                         cmd.CommandType    = System.Data.CommandType.StoredProcedure;
                         cmd.CommandTimeout = 120;
-                        cmd.Parameters.AddWithValue("@ProviderID",    providerID);
+                        cmd.Parameters.AddWithValue("@ProviderID",    provId);
                         cmd.Parameters.AddWithValue("@ProcedureID",   procedureID);
                         cmd.Parameters.AddWithValue("@TPAProcID",     procedureID.ToString());
                         cmd.Parameters.AddWithValue("@TPAProcedureID", level1.ToString());
-                        cmd.Parameters.AddWithValue("@IssueID",       issueID);
-                        cmd.Parameters.AddWithValue("@CorpID",        corpID);
-                        cmd.Parameters.AddWithValue("@PayerID",       payerID);
-                        cmd.Parameters.AddWithValue("@PolicyID",      policyID);
+                        cmd.Parameters.AddWithValue("@IssueID",       issId);
+                        cmd.Parameters.AddWithValue("@CorpID",        corpId);
+                        cmd.Parameters.AddWithValue("@PayerID",       payId);
+                        cmd.Parameters.AddWithValue("@PolicyID",      polId);
                         cmd.Parameters.AddWithValue("@ClaimID",       claimIdLong);
-                        cmd.Parameters.AddWithValue("@MemberPolicyID", memberPolicyID);
-                        cmd.Parameters.AddWithValue("@SITypeID",      siTypeID);
+                        cmd.Parameters.AddWithValue("@MemberPolicyID", memPolId);
+                        cmd.Parameters.AddWithValue("@SITypeID",      siTypId);
                         cmd.Parameters.AddWithValue("@isPED",         isPED);
                         cmd.Parameters.AddWithValue("@isGIPSA",       isGIPSA);
                         cmd.Parameters.AddWithValue("@isDaycare",     isDayCare);
                         cmd.Parameters.AddWithValue("@isCI",          isCI);
-                        if (brokerID != 0)
-                            cmd.Parameters.AddWithValue("@BrokerID",  brokerID);
-                        cmd.Parameters.AddWithValue("@Slno",          slNo);
+                        if (brokId != 0)
+                            cmd.Parameters.AddWithValue("@BrokerID",  brokId);
+                        cmd.Parameters.AddWithValue("@Slno",          slNoInt);
 
                         using (var adapter = new System.Data.SqlClient.SqlDataAdapter(cmd))
                             adapter.Fill(ds);

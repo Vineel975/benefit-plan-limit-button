@@ -1,8 +1,18 @@
-[ClaimAI] GetCodingProcedureEligibleLimit: 
-{success: false, error: "Invalid object name 'ClaimCodingDetails'."}
-error
-: 
-"Invalid object name 'ClaimCodingDetails'."
-success
-: 
-false
+EXEC USP_Codingprocedurelimits
+    @ProviderID     = <value from debug.providerID>,
+    @ProcedureID    = <value from debug.procedureID>,
+    @TPAProcID      = '<value from debug.procedureID>',
+    @TPAProcedureID = '<value from debug.level1>',
+    @IssueID        = <value from debug.issueID>,
+    @CorpID         = <value from debug.corpID>,
+    @PayerID        = <value from debug.payerID>,
+    @PolicyID       = <value from debug.policyID>,
+    @ClaimID        = <value from debug.claimId>,
+    @MemberPolicyID = <value from debug.memberPolicyID>,
+    @SITypeID       = <value from debug.siTypeID>,
+    @isPED          = 0,
+    @isGIPSA        = 0,
+    @isDaycare      = 1,
+    @isCI           = 0,
+    @BrokerID       = <value from debug.brokerID>,
+    @Slno           = <value from debug.slNo>

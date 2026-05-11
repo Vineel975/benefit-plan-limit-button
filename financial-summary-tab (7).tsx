@@ -444,14 +444,25 @@ export function FinancialSummaryTab({
         utilized?: Record<string, number>;
       };
       setSpLimitLoading(false);
-      if (d.success && d.eligibleAmount !== undefined) {
-        setSpLimitResult({
-          eligibleAmount: d.eligibleAmount,
-          ruleName: d.ruleName ?? "",
-          limits: d.limits ?? {},
-          utilized: d.utilized ?? {},
-        });
-        onBenefitPlanLimitExtracted?.(d.eligibleAmount, `Calculated from benefit plan rules: ${d.ruleName ?? ""}`);
+      if (d.success) {
+        if ((d as unknown as { noLimit?: boolean }).noLimit) {
+          // No sub-limit configured — show info but don't change the amount
+          setSpLimitResult({
+            eligibleAmount: -1,
+            ruleName: d.ruleName ?? "No sub-limit — full sum insured applies",
+            limits: {},
+            utilized: {},
+          });
+        } else if (d.eligibleAmount !== undefined && d.eligibleAmount !== null) {
+          setSpLimitResult({
+            eligibleAmount: d.eligibleAmount,
+            ruleName: d.ruleName ?? "",
+            limits: d.limits ?? {},
+            utilized: d.utilized ?? {},
+            warning: (d as unknown as { warning?: string }).warning,
+          });
+          onBenefitPlanLimitExtracted?.(d.eligibleAmount, `Calculated from benefit plan rules: ${d.ruleName ?? ""}`);
+        }
       } else {
         setSpLimitError(d.error ?? "Failed to calculate");
       }
@@ -464,6 +475,7 @@ export function FinancialSummaryTab({
     ruleName: string;
     limits: Record<string, number | null>;
     utilized: Record<string, number>;
+    warning?: string;
   } | null>(null);
   const [spLimitError,      setSpLimitError]      = useState<string | null>(null);
   const [exclusionsSummary, setExclusionsSummary] = useState<string | null>(null);
@@ -539,8 +551,8 @@ export function FinancialSummaryTab({
   }, [memberPolicyId, claimId]);
 
   const hospitalAmount = normalizeAmount(financialSummaryTotals.hospitalBillAfterDiscount);
-  // SP-calculated limit takes priority over AI-extracted benefit amount
-  const benefitTotal = spLimitResult !== null
+  // SP-calculated limit takes priority — but -1 means no sub-limit (don't cap)
+  const benefitTotal = spLimitResult !== null && spLimitResult.eligibleAmount !== -1
     ? spLimitResult.eligibleAmount
     : normalizeAmount(benefitAmount);
   const tariffItems = Array.isArray(tariffExtractionItem) ? tariffExtractionItem : [];
@@ -1137,11 +1149,16 @@ export function FinancialSummaryTab({
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-sm text-gray-900">
                   {spLimitResult !== null
-                    ? formatDisplayAmount(spLimitResult.eligibleAmount)
+                    ? spLimitResult.eligibleAmount === -1
+                      ? "No sub-limit"
+                      : formatDisplayAmount(spLimitResult.eligibleAmount)
                     : benefitTotal !== null ? formatDisplayAmount(benefitTotal) : "—"}
                 </span>
                 {spLimitResult && (
                   <span className="text-xs text-gray-500">{spLimitResult.ruleName}</span>
+                )}
+                {spLimitResult?.warning && (
+                  <span className="text-xs text-amber-600 font-medium">⚠ {spLimitResult.warning}</span>
                 )}
                 {spLimitError && (
                   <span className="text-xs text-red-500">{spLimitError}</span>

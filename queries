@@ -1,31 +1,7 @@
--- Check what procedures are linked to this member's benefit plan
-SELECT 
-    bp.ID           AS BPConditionID,
-    bp.Name         AS ConditionName,
-    bp.ParentID,
-    par.Name        AS ParentName,
-    rc.ClaimLimit,
-    rc.IndividualLimit,
-    rc.FamilyLimit,
-    rc.PolicyLimit,
-    rc.Remarks,
-    rc.TPAProcedureID,
-    rc.TPALevel1
-FROM BPCondition bp WITH(NOLOCK)
-LEFT JOIN BPCondition par WITH(NOLOCK) ON par.ID = bp.ParentID
-LEFT JOIN BPRuleConfig rc WITH(NOLOCK) ON rc.BPConditionID = bp.ID
-WHERE bp.BPSIID IN (
-    SELECT BPSIID FROM MemberPolicy WITH(NOLOCK) WHERE ID = 94539527
-)
-ORDER BY par.Name, bp.Name
+-- 1. Check what conditions are configured for this member policy's benefit plan
+EXEC USP_BPSumInsured_Retrieve
 
-
-
-
-
-
-
--- Check what procedure was coded for this claim
+-- 2. Check ClaimsCoding for procedure used
 SELECT TOP 5 
     ID, ClaimID, SlNo,
     TPAProcedureID, TPALevel1, TPALevel2, TPALevel3,
@@ -33,3 +9,23 @@ SELECT TOP 5
 FROM ClaimsCoding WITH(NOLOCK)
 WHERE ClaimID = 26041586026
 ORDER BY ID DESC
+
+-- 3. Check what BPSIID is linked to MemberPolicy 94539527
+SELECT ID, BenefitPlanID, MemberPolicyID, SIAmount, SITypeID
+FROM BPSumInsured WITH(NOLOCK)
+WHERE ID = (
+    SELECT TOP 1 BPSIID 
+    FROM MemberPolicy WITH(NOLOCK) 
+    WHERE ID = 94539527
+)
+
+-- 4. Check what rules exist for this BPSIID
+SELECT rc.*, c.Name AS ConditionName
+FROM BPRuleConfig rc WITH(NOLOCK)
+JOIN BPMasterCondition c WITH(NOLOCK) ON c.ID = rc.BPConditionID
+WHERE rc.BPSIID = (
+    SELECT TOP 1 BPSIID 
+    FROM MemberPolicy WITH(NOLOCK) 
+    WHERE ID = 94539527
+)
+ORDER BY c.Name

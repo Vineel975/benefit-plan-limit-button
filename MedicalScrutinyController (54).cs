@@ -8086,10 +8086,11 @@ namespace Enrollment.Controllers
                     } catch { }
 
                     // Table2 = configured limits, Table3 = utilized amounts
+                    System.Data.DataRow limitsRow = null;
                     bool spNoLimit = ds.Tables.Count < 2 || ds.Tables[1].Rows.Count == 0;
                     if (!spNoLimit)
                     {
-                        var limitsRow = ds.Tables[1].Rows[0];
+                        limitsRow = ds.Tables[1].Rows[0];
                         spNoLimit = limitsRow["ClaimLimit"]     == DBNull.Value
                                  && limitsRow["IndividualLimit"] == DBNull.Value
                                  && limitsRow["FamilyLimit"]     == DBNull.Value

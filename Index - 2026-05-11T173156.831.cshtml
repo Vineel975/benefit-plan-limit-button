@@ -9068,7 +9068,11 @@
                             var iframe = document.getElementById('ifrClaimAI');
                             if (iframe && iframe.contentWindow) {
                                 iframe.contentWindow.postMessage(
-                                    Object.assign({ source: 'spectra', type: 'codingProcedureLimitResult' }, res),
+                                    { source: 'spectra', type: 'codingProcedureLimitResult',
+                                      success: res.success, eligibleAmount: res.eligibleAmount,
+                                      ruleName: res.ruleName, remarks: res.remarks,
+                                      noLimit: res.noLimit, warning: res.warning,
+                                      limits: res.limits, utilized: res.utilized },
                                     '*'
                                 );
                             }

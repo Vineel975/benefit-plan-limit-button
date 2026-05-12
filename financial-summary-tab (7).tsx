@@ -1134,11 +1134,19 @@ export function FinancialSummaryTab({
                     if (!claimId) return;
                     setSpLimitLoading(true);
                     setSpLimitError(null);
+                    console.log("[ClaimAI] Sending getCodingProcedureLimit postMessage, claimId=", claimId);
                     // Ask Spectra parent to call the endpoint (avoids CORS)
                     window.parent.postMessage(
                       { source: "claimai", type: "getCodingProcedureLimit", claimId },
                       "*"
                     );
+                    // Safety timeout — if no response in 15s, show error
+                    setTimeout(() => {
+                      setSpLimitLoading(prev => {
+                        if (prev) setSpLimitError("No response from Spectra — check if the endpoint is deployed.");
+                        return false;
+                      });
+                    }, 15000);
                   }}
                   disabled={spLimitLoading || !claimId}
                   className="text-xs px-2 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"

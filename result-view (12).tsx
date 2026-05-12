@@ -277,6 +277,7 @@ export function ResultView({
   // Listen for messages from Spectra parent (facilityOptions, etc.)
   useEffect(() => {
     const handler = (event: MessageEvent) => {
+      console.log("[ClaimAI] iframe received postMessage:", event.data?.source, event.data?.type);
       if (event.data?.source !== "spectra") return;
       if (event.data?.type === "setFacilityOptions") {
         const opts = event.data.options as Array<{id:string;text:string}>;

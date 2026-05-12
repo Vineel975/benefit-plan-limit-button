@@ -9047,20 +9047,21 @@
                 // Bill Details automation from ClaimAI
                 if (event.data.type === 'getCodingProcedureLimit') {
                     var _claimIdForLimit = event.data.claimId || $('#hdnClaimID').val();
+                    console.log('[ClaimAI] getCodingProcedureLimit received, claimId=', _claimIdForLimit);
                     $.ajax({
                         url: '/MedicalScrutiny/GetCodingProcedureEligibleLimit',
                         type: 'GET',
                         data: {
-                            claimId:       _claimIdForLimit,
-                            slNo:          $('#hdnClaimSlNo').val() || '1',
-                            providerID:    $('#hdnProviderID').val() || '0',
-                            policyID:      $('#hdnPolicyID').val() || '0',
+                            claimId:        _claimIdForLimit,
+                            slNo:           $('#hdnClaimSlNo').val() || '1',
+                            providerID:     $('#hdnProviderID').val() || '0',
+                            policyID:       $('#hdnPolicyID').val() || '0',
                             memberPolicyID: $('#hdnMemberPolicyID').val() || '0',
-                            issueID:       $('#hdnInsuranceCompanyID').val() || '0',
-                            corpID:        $('#hdnCorporateID').val() || '0',
-                            payerID:       $('#hdnPayerID').val() || '0',
-                            brokerID:      $('#hdnBrokerID').val() || '0',
-                            siTypeID:      $('#hdnSITypeID').val() || '0'
+                            issueID:        $('#hdnInsuranceCompanyID').val() || '0',
+                            corpID:         $('#hdnCorporateID').val() || '0',
+                            payerID:        $('#hdnPayerID').val() || '0',
+                            brokerID:       $('#hdnBrokerID').val() || '0',
+                            siTypeID:       $('#hdnSITypeID').val() || '0'
                         },
                         success: function(res) {
                             console.log('[ClaimAI] GetCodingProcedureEligibleLimit:', res);

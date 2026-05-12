@@ -299,24 +299,8 @@ export function FinancialSummaryTab({
           }).catch(() => {});
         }
 
-        if (allCaps.length === 0) return;
-
-        // Extract benefit plan limit via server-side route
-        if (!onBenefitPlanLimitExtracted) return;
-        try {
-          const limitRes = await fetch("/api/benefit-plan-limit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cappings: allCaps, diagnosis: diagnosis ?? "" }),
-          });
-          if (cancelled) return;
-          if (!limitRes.ok) { console.warn("[ClaimAI] benefit-plan-limit route failed:", limitRes.status); return; }
-          const parsed = await limitRes.json() as { benefitPlanLimit: number | null; notes: string };
-          console.log("[ClaimAI] benefitPlanLimit from DB:", parsed);
-          if (!cancelled) onBenefitPlanLimitExtracted(parsed.benefitPlanLimit, parsed.notes ?? "");
-        } catch (e) {
-          console.warn("[ClaimAI] benefit-plan-limit error:", e);
-        }
+        // Benefit plan limit is now calculated only when user clicks Calculate button
+        // (uses USP_Codingprocedurelimits via Spectra postMessage)
 
 
       } catch (e) {
@@ -552,10 +536,13 @@ export function FinancialSummaryTab({
   }, [memberPolicyId, claimId]);
 
   const hospitalAmount = normalizeAmount(financialSummaryTotals.hospitalBillAfterDiscount);
-  // SP-calculated limit takes priority — but -1 means no sub-limit (don't cap)
+  // Only use benefit plan limit after Calculate button is clicked (spLimitResult set)
+  // Before that, benefitTotal is null — Total Approved = min(Bill, Tariff, BSI) only
   const benefitTotal = spLimitResult !== null && spLimitResult.eligibleAmount !== -1
     ? spLimitResult.eligibleAmount
-    : normalizeAmount(benefitAmount);
+    : spLimitResult !== null && spLimitResult.eligibleAmount === -1
+      ? null // noLimit — don't cap
+      : null; // not yet calculated — don't show or use
   const tariffItems = Array.isArray(tariffExtractionItem) ? tariffExtractionItem : [];
   const tariffItemsTotal = tariffItems.reduce(
     (sum, item) => sum + (normalizeAmount(item.amount) ?? 0), 0,

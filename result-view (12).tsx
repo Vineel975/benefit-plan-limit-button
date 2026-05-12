@@ -1073,11 +1073,16 @@ export function ResultView({
 
     const procedureHint  = `${diagnosis ?? ""} ${lineOfTreatment ?? ""}`.toLowerCase();
     // Use user-edited amounts if available, else computed values
-    const eligibleAmount = editedAmounts.approved
+    // If benefit plan limit was calculated via SP, use it to cap the eligible amount
+    const spBenefitLimit = (dbBenefitPlanLimit && dbBenefitPlanLimit > 0) ? dbBenefitPlanLimit : null;
+    const baseEligible   = editedAmounts.approved
                         ?? claimCalculation?.finalInsurerPayable
                         ?? displayAnalysis?.finalInsurerPayable
                         ?? claimCalculation?.insurerPayable
                         ?? 0;
+    const eligibleAmount = spBenefitLimit !== null
+                        ? Math.min(baseEligible, spBenefitLimit)
+                        : baseEligible;
     const packageAmount  = editedAmounts.claimed
                         ?? claimCalculation?.hospitalBillAfterDiscount
                         ?? claimCalculation?.hospitalBillBeforeDiscount

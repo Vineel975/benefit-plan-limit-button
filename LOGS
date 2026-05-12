@@ -1,9 +1,4 @@
-string ruleName = limitsRow["RuleName"] != DBNull.Value ? limitsRow["RuleName"].ToString() : "";
-double claimLim = limitsRow["ClaimLimit"] != DBNull.Value ? Convert.ToDouble(limitsRow["ClaimLimit"]) : double.MaxValue;
-double indLim = limitsRow["IndividualLimit"] != DBNull.Value ? Convert.ToDouble(limitsRow["IndividualLimit"]) : double.MaxValue;
-double famLim = limitsRow["FamilyLimit"] != DBNull.Value ? Convert.ToDouble(limitsRow["FamilyLimit"]) : double.MaxValue;
-double polLim = limitsRow["PolicyLimit"] != DBNull.Value ? Convert.ToDouble(limitsRow["PolicyLimit"]) : double.MaxValue;
-double corpLim = limitsRow["CorporateLimit"] != DBNull.Value ? Convert.ToDouble(limitsRow["CorporateLimit"]) : double.MaxValue;
-
-                    Severity	Code	Description	Project	File	Line	Suppression State
-Error (active)	CS0103	The name 'limitsRow' does not exist in the current context	Enrollment	C:\Users\satyavineel.k\Downloads\fhpl-spectra-v1\fhplrepos-fhpl-spectra-e6bce17a7eb8\Enrollment\Controllers\MedicalScrutinyController.cs	8175	
+[ClaimAI] Sending getCodingProcedureLimit postMessage, claimId= 26041586026
+Index:16593 [ClaimAI] postMessage received: getCodingProcedureLimit {"source":"claimai","type":"getCodingProcedureLimit","claimId":"26041586026"}
+Index:16867 [ClaimAI] getCodingProcedureLimit received, claimId= 26041586026
+Index:16884 [ClaimAI] GetCodingProcedureEligibleLimit: {success: true, noLimit: false, eligibleAmount: 20000, ruleName: 'Ailment Cappings', remarks: 'INTERNAL CLAUSE : We will process as per GIPSA lim…missible.Cost of lens maximum 30k for monofocal .', …}

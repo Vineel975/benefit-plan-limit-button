@@ -1,4 +1,1 @@
-[ClaimAI] Sending getCodingProcedureLimit postMessage, claimId= 26041586026
-Index:16593 [ClaimAI] postMessage received: getCodingProcedureLimit {"source":"claimai","type":"getCodingProcedureLimit","claimId":"26041586026"}
-Index:16867 [ClaimAI] getCodingProcedureLimit received, claimId= 26041586026
-Index:16884 [ClaimAI] GetCodingProcedureEligibleLimit: {success: true, noLimit: false, eligibleAmount: 20000, ruleName: 'Ailment Cappings', remarks: 'INTERNAL CLAUSE : We will process as per GIPSA lim…missible.Cost of lens maximum 30k for monofocal .', …}
+[ClaimAI] iframe received postMessage: BPSIConditions (Ailment Cappings) codingProcedureLimitResult

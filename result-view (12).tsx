@@ -288,6 +288,7 @@ export function ResultView({
         if (availedId) setSelectedAvailedId(availedId);
       }
       if (event.data?.type === "codingProcedureLimitResult") {
+        console.log("[ClaimAI] Dispatching claimai:codingLimitResult event:", event.data);
         window.dispatchEvent(new CustomEvent("claimai:codingLimitResult", { detail: event.data }));
       }
     };

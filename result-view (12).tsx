@@ -1656,7 +1656,7 @@ export function ResultView({
                     tariffExtractionItem={displayAnalysis?.tariffExtractionItem}
                     hospitalBillBreakdown={displayAnalysis?.hospitalBillBreakdown}
                     hospitalBillPageNumber={displayAnalysis?.totalAmount?.pageNumber}
-                    benefitAmount={dbBenefitPlanLimit ?? claimCalculation?.benefitAmount ?? displayAnalysis?.benefitAmount}
+                    benefitAmount={dbBenefitPlanLimit ?? null}
                     onBenefitPlanLimitExtracted={(limit) => { if (limit) setDbBenefitPlanLimit(limit); }}
                     dbBenefitPlanLimit={dbBenefitPlanLimit}
                     onHospitalAmountClick={(pageNumber) => {

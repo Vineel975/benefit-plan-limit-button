@@ -8039,8 +8039,72 @@ namespace Enrollment.Controllers
                         }
                     }
 
-                    if (procedureID == 0 || memPolId == 0)
-                        return Json(new { success = false, error = "Coding details not found. Please complete coding first." }, JsonRequestBehavior.AllowGet);
+                    if (memPolId == 0)
+                        return Json(new { success = false, error = "Member policy not found." }, JsonRequestBehavior.AllowGet);
+
+                    // If coding not done yet — skip SP, go directly to BPSIConditions fallback
+                    if (procedureID == 0)
+                    {
+                        long bpsiIdFallback = 0;
+                        using (var bpCmd = new System.Data.SqlClient.SqlCommand(
+                            @"SELECT TOP 1 BPSIID FROM MemberSI WITH(NOLOCK)
+                              WHERE MemberPolicyID = @MemberPolicyID
+                              AND ISNULL(Deleted,0)=0
+                              ORDER BY ID DESC", conn))
+                        {
+                            bpCmd.Parameters.AddWithValue("@MemberPolicyID", memPolId);
+                            var val = bpCmd.ExecuteScalar();
+                            if (val != null && val != DBNull.Value)
+                                bpsiIdFallback = Convert.ToInt64(val);
+                        }
+
+                        if (bpsiIdFallback > 0)
+                        {
+                            double? ailmentLimitFb = null;
+                            string  ailmentRuleFb  = "", ailmentRemarkFb = "";
+                            using (var bpCmd = new System.Data.SqlClient.SqlCommand(
+                                @"SELECT TOP 1 bsc.ClaimLimit, c.Name AS ConditionName, bsc.Remarks
+                                  FROM BPSIConditions bsc WITH(NOLOCK)
+                                  LEFT JOIN Mst_BPConditions c   WITH(NOLOCK) ON c.ID   = bsc.BPConditionID
+                                  LEFT JOIN Mst_BPConditions par WITH(NOLOCK) ON par.ID = c.ParentID
+                                  WHERE bsc.BPSIID = @BPSIID
+                                  AND ISNULL(bsc.Deleted,0) = 0
+                                  AND par.Name = 'Ailment Conditions'
+                                  AND bsc.ClaimLimit IS NOT NULL
+                                  AND ISNULL(bsc.isCovered,0) = 1
+                                  ORDER BY bsc.ClaimLimit ASC", conn))
+                            {
+                                bpCmd.Parameters.AddWithValue("@BPSIID", bpsiIdFallback);
+                                using (var rdr = bpCmd.ExecuteReader())
+                                {
+                                    if (rdr.Read())
+                                    {
+                                        ailmentLimitFb  = rdr["ClaimLimit"]    != DBNull.Value ? Convert.ToDouble(rdr["ClaimLimit"]) : (double?)null;
+                                        ailmentRuleFb   = rdr["ConditionName"] != DBNull.Value ? rdr["ConditionName"].ToString()     : "";
+                                        ailmentRemarkFb = rdr["Remarks"]       != DBNull.Value ? rdr["Remarks"].ToString()           : "";
+                                    }
+                                }
+                            }
+
+                            if (ailmentLimitFb.HasValue)
+                                return Json(new {
+                                    success        = true,
+                                    noLimit        = false,
+                                    eligibleAmount = ailmentLimitFb.Value,
+                                    ruleName       = ailmentRuleFb,
+                                    remarks        = ailmentRemarkFb,
+                                    source         = "BPSIConditions (Ailment Cappings)",
+                                    warning        = "Coding not completed. Showing Ailment Cappings limit — code the procedure for a more specific limit."
+                                }, JsonRequestBehavior.AllowGet);
+                        }
+
+                        return Json(new {
+                            success   = true,
+                            noLimit   = true,
+                            ruleName  = "Coding not completed. No benefit plan limit available.",
+                            eligibleAmount = (double?)null
+                        }, JsonRequestBehavior.AllowGet);
+                    }
 
                     // Call USP_Codingprocedurelimits
                     var ds = new System.Data.DataSet();
